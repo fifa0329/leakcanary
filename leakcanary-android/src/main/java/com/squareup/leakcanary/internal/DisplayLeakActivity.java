@@ -86,13 +86,12 @@ public final class DisplayLeakActivity extends Activity {
     DisplayLeakActivity.leakDirectoryProvider = leakDirectoryProvider;
   }
 
-  static File getLeakDirectory(Context context) {
+  private static LeakDirectoryProvider leakDirectoryProvider(Context context) {
     LeakDirectoryProvider leakDirectoryProvider = DisplayLeakActivity.leakDirectoryProvider;
-    if (leakDirectoryProvider != null) {
-      return leakDirectoryProvider.leakDirectory();
-    } else {
-      return new DefaultLeakDirectoryProvider(context).leakDirectory();
+    if (leakDirectoryProvider == null) {
+      leakDirectoryProvider = new DefaultLeakDirectoryProvider(context);
     }
+    return leakDirectoryProvider;
   }
 
   // null until it's been first loaded.
@@ -139,7 +138,13 @@ public final class DisplayLeakActivity extends Activity {
 
   @Override protected void onResume() {
     super.onResume();
-    LoadLeaks.load(this);
+    LeakDirectoryProvider leakDirectoryProvider = leakDirectoryProvider(this);
+    if (leakDirectoryProvider.isLeakStorageWritable()) {
+      File leakDirectory = leakDirectoryProvider.leakDirectory();
+      LoadLeaks.load(this, leakDirectory);
+    } else {
+      leakDirectoryProvider.requestPermission(this);
+    }
   }
 
   @Override public void setTheme(int resid) {
@@ -311,7 +316,7 @@ public final class DisplayLeakActivity extends Activity {
         actionButton.setText(R.string.leak_canary_delete_all);
         actionButton.setOnClickListener(new View.OnClickListener() {
           @Override public void onClick(View v) {
-            File leakDirectory = getLeakDirectory(DisplayLeakActivity.this);
+            File leakDirectory = leakDirectoryProvider(DisplayLeakActivity.this).leakDirectory();
             File[] files = leakDirectory.listFiles();
             if (files != null) {
               for (File file : files) {
@@ -409,8 +414,8 @@ public final class DisplayLeakActivity extends Activity {
 
     static final Executor backgroundExecutor = newSingleThreadExecutor("LoadLeaks");
 
-    static void load(DisplayLeakActivity activity) {
-      LoadLeaks loadLeaks = new LoadLeaks(activity);
+    static void load(DisplayLeakActivity activity, File leakDirectory) {
+      LoadLeaks loadLeaks = new LoadLeaks(activity, leakDirectory);
       inFlight.add(loadLeaks);
       backgroundExecutor.execute(loadLeaks);
     }
@@ -426,9 +431,9 @@ public final class DisplayLeakActivity extends Activity {
     private final File leakDirectory;
     private final Handler mainHandler;
 
-    LoadLeaks(DisplayLeakActivity activity) {
+    LoadLeaks(DisplayLeakActivity activity, File leakDirectory) {
       this.activityOrNull = activity;
-      leakDirectory = getLeakDirectory(activity);
+      this.leakDirectory = leakDirectory;
       mainHandler = new Handler(Looper.getMainLooper());
     }
 

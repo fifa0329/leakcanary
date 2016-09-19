@@ -16,9 +16,8 @@
 package com.example.leakcanary;
 
 import android.app.Activity;
-import android.os.AsyncTask;
+import android.content.Intent;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 
@@ -31,11 +30,16 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity);
 
-        View button = findViewById(R.id.async_task);
+        View button = findViewById(R.id.click);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startAsyncTask();
+                Evil.child = MainActivity.this;
+                Intent intent = new Intent();
+                intent.setClass(MainActivity.this, MainActivity1.class);
+                startActivity(intent);
+                finish();
+
             }
         });
         Log.d(TAG, "onCreate");
@@ -59,19 +63,6 @@ public class MainActivity extends Activity {
         Log.d(TAG, "onDestroy");
     }
 
-    void startAsyncTask() {
-        // This async task is an anonymous class and therefore has a hidden reference to the outer
-        // class MainActivity. If the activity gets destroyed before the task finishes (e.g. rotation),
-        // the activity instance will leak.
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... params) {
-                // Do some slow work in background
-                SystemClock.sleep(20000);
-                return null;
-            }
-        }.execute();
-    }
 }
 
 

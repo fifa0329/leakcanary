@@ -50,6 +50,8 @@ import static com.squareup.leakcanary.internal.LeakCanaryInternals.SAMSUNG;
  */
 public enum AndroidExcludedRefs {
 
+  // ######## Android SDK Excluded refs ########
+
   ACTIVITY_CLIENT_RECORD__NEXT_IDLE(SDK_INT >= KITKAT && SDK_INT <= LOLLIPOP) {
     @Override void add(ExcludedRefs.Builder excluded) {
       excluded.instanceField("android.app.ActivityThread$ActivityClientRecord", "nextIdle")
@@ -229,7 +231,7 @@ public enum AndroidExcludedRefs {
     }
   },
 
-  USER_MANAGER__SINSTANCE(SDK_INT >= JELLY_BEAN && SDK_INT <= LOLLIPOP_MR1) {
+  USER_MANAGER__SINSTANCE(SDK_INT >= JELLY_BEAN && SDK_INT <= M) {
     @Override void add(ExcludedRefs.Builder excluded) {
       excluded.instanceField("android.os.UserManager", "mContext")
           .reason("UserManager has a static sInstance field that creates an instance and caches it"
@@ -254,7 +256,57 @@ public enum AndroidExcludedRefs {
     }
   },
 
-  DEVICE_POLICY_MANAGER__SETTINGS_OBSERVER(MOTOROLA.equals(MANUFACTURER) && SDK_INT == KITKAT) {
+  AUDIO_MANAGER(SDK_INT <= LOLLIPOP_MR1) {
+    @Override void add(ExcludedRefs.Builder excluded) {
+      excluded.instanceField("android.media.AudioManager$1", "this$0")
+          .reason("Prior to Android M, VideoView required audio focus from AudioManager and"
+              + " never abandoned it, which leaks the Activity context through the AudioManager."
+              + " The root of the problem is that AudioManager uses whichever"
+              + " context it receives, which in the case of the VideoView example is an Activity,"
+              + " even though it only needs the application's context. The issue is fixed in"
+              + " Android M, and the AudioManager now uses the application's context."
+              + " Tracked here: https://code.google.com/p/android/issues/detail?id=152173"
+              + " Fix: https://gist.github.com/jankovd/891d96f476f7a9ce24e2");
+    }
+  },
+
+  EDITTEXT_BLINK_MESSAGEQUEUE(SDK_INT <= LOLLIPOP_MR1) {
+    @Override void add(ExcludedRefs.Builder excluded) {
+      excluded.instanceField("android.widget.Editor$Blink", "this$0")
+          .reason("The EditText Blink of the Cursor is implemented using a callback and Messages,"
+              + " which trigger the display of the Cursor. If an AlertDialog or DialogFragment that"
+              + " contains a blinking cursor is detached, a message is posted with a delay after the"
+              + " dialog has been closed and as a result leaks the Activity."
+              + " This can be fixed manually by calling TextView.setCursorVisible(false) in the"
+              + " dismiss() method of the dialog."
+              + " Tracked here: https://code.google.com/p/android/issues/detail?id=188551"
+              + " Fixed in AOSP: https://android.googlesource.com/platform/frameworks/base/+"
+              + "/5b734f2430e9f26c769d6af8ea5645e390fcf5af%5E%21/");
+    }
+  },
+
+  CONNECTIVITY_MANAGER__SINSTANCE(SDK_INT <= M) {
+    @Override void add(ExcludedRefs.Builder excluded) {
+      excluded.instanceField("android.net.ConnectivityManager", "sInstance")
+          .reason("ConnectivityManager has a sInstance field that is set when the first"
+              + "ConnectivityManager instance is created. ConnectivityManager has a mContext field."
+              + "When calling activity.getSystemService(Context.CONNECTIVITY_SERVICE) , the first"
+              + "ConnectivityManager instance is created with the activity context and stored in"
+              + "sInstance. That activity context then leaks forever."
+              + "Until this is fixed, app developers can prevent this leak by making sure the"
+              + " ConnectivityManager is first created with an App Context. E.g. in some static"
+              + " init do: context.getApplicationContext()"
+              + ".getSystemService(Context.CONNECTIVITY_SERVICE)"
+              + " Tracked here: https://code.google.com/p/android/issues/detail?id=198852"
+              + " Introduced here: https://github.com/android/platform_frameworks_base/commit/"
+              + "e0bef71662d81caaaa0d7214fb0bef5d39996a69");
+    }
+  },
+
+  // ######## Manufacturer specific Excluded refs ########
+
+  DEVICE_POLICY_MANAGER__SETTINGS_OBSERVER(
+      MOTOROLA.equals(MANUFACTURER) && SDK_INT >= KITKAT && SDK_INT <= LOLLIPOP_MR1) {
     @Override void add(ExcludedRefs.Builder excluded) {
       if (MOTOROLA.equals(MANUFACTURER) && SDK_INT == KITKAT) {
         excluded.instanceField("android.app.admin.DevicePolicyManager$SettingsObserver", "this$0")
@@ -281,8 +333,8 @@ public enum AndroidExcludedRefs {
           .reason("ClipboardUIManager is a static singleton that leaks an activity context."
               + " Fix: trigger a call to ClipboardUIManager.getInstance() in Application.onCreate()"
               + " , so that the ClipboardUIManager instance gets cached with a reference to the"
-              + " application context. Example: https://gist.github.com/pepyakin"
-              + "/8d2221501fd572d4a61c");
+              + " application context. Example: https://gist.github.com/cypressious/"
+              + "91c4fb1455470d803a602838dfcd5774");
     }
   },
 
@@ -361,44 +413,17 @@ public enum AndroidExcludedRefs {
     }
   },
 
-  AUDIO_MANAGER(SDK_INT <= LOLLIPOP_MR1) {
+  ACTIVITY_MANAGER_MCONTEXT(SAMSUNG.equals(MANUFACTURER) && SDK_INT == LOLLIPOP_MR1) {
     @Override void add(ExcludedRefs.Builder excluded) {
-      excluded.instanceField("android.media.AudioManager$1", "this$0")
-          .reason("Prior to Android M, VideoView required audio focus from AudioManager and"
-              + " never abandoned it, which leaks the Activity context through the AudioManager."
-              + " The root of the problem is that AudioManager uses whichever"
-              + " context it receives, which in the case of the VideoView example is an Activity,"
-              + " even though it only needs the application's context. The issue is fixed in"
-              + " Android M, and the AudioManager now uses the application's context."
-              + " Tracked here: https://code.google.com/p/android/issues/detail?id=152173"
-              + " Fix: https://gist.github.com/jankovd/891d96f476f7a9ce24e2");
+      excluded.staticField("android.app.ActivityManager", "mContext")
+          .reason("Samsung added a static mContext field to ActivityManager, holds a reference"
+              + " to the activity."
+              + " Observed here: https://github.com/square/leakcanary/issues/177 Fix in comment:"
+              + " https://github.com/square/leakcanary/issues/177#issuecomment-222724283");
     }
   },
 
-  EDITTEXT_BLINK_MESSAGEQUEUE {
-    @Override void add(ExcludedRefs.Builder excluded) {
-      excluded.instanceField("android.widget.Editor$Blink", "this$0")
-          .reason("The EditText Blink of the Cursor is implemented using a callback and Messages,"
-              + " which trigger the display of the Cursor. If an AlertDialog or DialogFragment that"
-              + " contains a blinking cursor is detached a message is posted with a delay after the"
-              + " dialog has been closed and as a result leaks the Activity."
-              + " This can be fixed manually by calling setCursorEnabled(false) in the dismiss()"
-              + " method of the dialog."
-              + " Tracked here: https://code.google.com/p/android/issues/detail?id=188551"
-              + " Fixed in AOSP: https://android.googlesource.com/platform/frameworks/base/+"
-              + "/5b734f2430e9f26c769d6af8ea5645e390fcf5af%5E%21/");
-    }
-  },
-
-  SERVICE_BINDER {
-    @Override void add(ExcludedRefs.Builder excluded) {
-      // We should ignore leaks where an android.os.Binder is the root of the leak.
-      // When you bind and unbind from a Service, the OS will keep a reference to the Binder
-      // until the client binder has been GC'ed. This means the Binder can be retained after
-      // Service.onDestroy() is called.
-      excluded.rootClass("android.os.Binder").alwaysExclude();
-    }
-  },
+  // ######## General Excluded refs ########
 
   SOFT_REFERENCES {
     @Override void add(ExcludedRefs.Builder excluded) {
@@ -450,7 +475,7 @@ public enum AndroidExcludedRefs {
   public static ExcludedRefs.Builder createAndroidDefaults() {
     return createBuilder(
         EnumSet.of(SOFT_REFERENCES, FINALIZER_WATCHDOG_DAEMON, MAIN, LEAK_CANARY_THREAD,
-            EVENT_RECEIVER__MMESSAGE_QUEUE, SERVICE_BINDER));
+            EVENT_RECEIVER__MMESSAGE_QUEUE));
   }
 
   /**

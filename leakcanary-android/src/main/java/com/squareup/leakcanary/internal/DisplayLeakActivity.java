@@ -61,6 +61,8 @@ import static android.text.format.DateUtils.FORMAT_SHOW_TIME;
 import static android.text.format.Formatter.formatShortFileSize;
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
+import static com.squareup.leakcanary.BuildConfig.GIT_SHA;
+import static com.squareup.leakcanary.BuildConfig.LIBRARY_VERSION;
 import static com.squareup.leakcanary.LeakCanary.leakInfo;
 import static com.squareup.leakcanary.internal.LeakCanaryInternals.newSingleThreadExecutor;
 
@@ -86,13 +88,12 @@ public final class DisplayLeakActivity extends Activity {
     DisplayLeakActivity.leakDirectoryProvider = leakDirectoryProvider;
   }
 
-  static File getLeakDirectory(Context context) {
+  private static LeakDirectoryProvider leakDirectoryProvider(Context context) {
     LeakDirectoryProvider leakDirectoryProvider = DisplayLeakActivity.leakDirectoryProvider;
-    if (leakDirectoryProvider != null) {
-      return leakDirectoryProvider.leakDirectory();
-    } else {
-      return new DefaultLeakDirectoryProvider(context).leakDirectory();
+    if (leakDirectoryProvider == null) {
+      leakDirectoryProvider = new DefaultLeakDirectoryProvider(context);
     }
+    return leakDirectoryProvider;
   }
 
   // null until it's been first loaded.
@@ -120,9 +121,9 @@ public final class DisplayLeakActivity extends Activity {
 
     setContentView(R.layout.leak_canary_display_leak);
 
-    listView = (ListView) findViewById(R.id.__leak_canary_display_leak_list);
-    failureView = (TextView) findViewById(R.id.__leak_canary_display_leak_failure);
-    actionButton = (Button) findViewById(R.id.__leak_canary_action);
+    listView = (ListView) findViewById(R.id.leak_canary_display_leak_list);
+    failureView = (TextView) findViewById(R.id.leak_canary_display_leak_failure);
+    actionButton = (Button) findViewById(R.id.leak_canary_action);
 
     updateUi();
   }
@@ -139,7 +140,13 @@ public final class DisplayLeakActivity extends Activity {
 
   @Override protected void onResume() {
     super.onResume();
-    LoadLeaks.load(this);
+    LeakDirectoryProvider leakDirectoryProvider = leakDirectoryProvider(this);
+    if (leakDirectoryProvider.isLeakStorageWritable()) {
+      File leakDirectory = leakDirectoryProvider.leakDirectory();
+      LoadLeaks.load(this, leakDirectory);
+    } else {
+      leakDirectoryProvider.requestPermission(this);
+    }
   }
 
   @Override public void setTheme(int resid) {
@@ -235,7 +242,7 @@ public final class DisplayLeakActivity extends Activity {
   }
 
   void deleteAllLeaks() {
-    File leakDirectory = getLeakDirectory(DisplayLeakActivity.this);
+    File leakDirectory = leakDirectoryProvider(DisplayLeakActivity.this).leakDirectory();
     File[] files = leakDirectory.listFiles();
     if (files != null) {
       for (File file : files) {
@@ -273,9 +280,13 @@ public final class DisplayLeakActivity extends Activity {
       if (result.failure != null) {
         listView.setVisibility(GONE);
         failureView.setVisibility(VISIBLE);
-        failureView.setText(
-            getString(R.string.leak_canary_failure_report) + Log.getStackTraceString(
-                result.failure));
+        String failureMessage = getString(R.string.leak_canary_failure_report)
+            + LIBRARY_VERSION
+            + " "
+            + GIT_SHA
+            + "\n"
+            + Log.getStackTraceString(result.failure);
+        failureView.setText(failureMessage);
         setTitle(R.string.leak_canary_analysis_failed);
         invalidateOptionsMenu();
         getActionBar().setDisplayHomeAsUpEnabled(true);
@@ -374,8 +385,8 @@ public final class DisplayLeakActivity extends Activity {
         convertView = LayoutInflater.from(DisplayLeakActivity.this)
             .inflate(R.layout.leak_canary_leak_row, parent, false);
       }
-      TextView titleView = (TextView) convertView.findViewById(R.id.__leak_canary_row_text);
-      TextView timeView = (TextView) convertView.findViewById(R.id.__leak_canary_row_time);
+      TextView titleView = (TextView) convertView.findViewById(R.id.leak_canary_row_text);
+      TextView timeView = (TextView) convertView.findViewById(R.id.leak_canary_row_time);
       Leak leak = getItem(position);
 
       String index = (leaks.size() - position) + ". ";
@@ -422,8 +433,8 @@ public final class DisplayLeakActivity extends Activity {
 
     static final Executor backgroundExecutor = newSingleThreadExecutor("LoadLeaks");
 
-    static void load(DisplayLeakActivity activity) {
-      LoadLeaks loadLeaks = new LoadLeaks(activity);
+    static void load(DisplayLeakActivity activity, File leakDirectory) {
+      LoadLeaks loadLeaks = new LoadLeaks(activity, leakDirectory);
       inFlight.add(loadLeaks);
       backgroundExecutor.execute(loadLeaks);
     }
@@ -439,9 +450,9 @@ public final class DisplayLeakActivity extends Activity {
     private final File leakDirectory;
     private final Handler mainHandler;
 
-    LoadLeaks(DisplayLeakActivity activity) {
+    LoadLeaks(DisplayLeakActivity activity, File leakDirectory) {
       this.activityOrNull = activity;
-      leakDirectory = getLeakDirectory(activity);
+      this.leakDirectory = leakDirectory;
       mainHandler = new Handler(Looper.getMainLooper());
     }
 

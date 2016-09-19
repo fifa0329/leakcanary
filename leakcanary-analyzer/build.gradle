@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-  compile 'com.squareup.haha:haha:2.0.2'
+  compile 'com.squareup.haha:haha:2.0.3'
   compile project(':leakcanary-watcher')
   testCompile 'junit:junit:4.12'
   testCompile 'org.assertj:assertj-core:1.7.0'
@@ -31,23 +31,15 @@ android.libraryVariants.all { variant ->
   artifacts.add('archives', task);
 }
 
-
-// See: https://code.google.com/p/android/issues/detail?id=64887#c13
-task copyTestResources(type: Copy) {
-  from "${projectDir}/src/test/resources"
-  into "${buildDir}/classes/test"
-}
-
-afterEvaluate { project ->
-  testDebugUnitTest.dependsOn copyTestResources
-}
-
 android {
   compileSdkVersion rootProject.ext.compileSdkVersion
   buildToolsVersion rootProject.ext.buildToolsVersion
   defaultConfig {
     minSdkVersion rootProject.ext.minSdkVersion
     targetSdkVersion rootProject.ext.targetSdkVersion
+  }
+  lintOptions {
+    disable 'GoogleAppIndexingWarning'
   }
 }
 

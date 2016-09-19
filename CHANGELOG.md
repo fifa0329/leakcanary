@@ -1,40 +1,15 @@
 # Change Log
 
-You can watch releases [on Bintray](https://bintray.com/pyricau/maven/com.squareup.leakcanary%3Aleakcanary-android/view?source=watch).
+## Version 1.4 *(2016-09-11)*
 
-## Version 1.4-SNAPSHOT
-
-Nothing yet.
-
-### Public API changes
-
-Nothing yet.
-
-### Dependencies
-
-```gradle
- dependencies {
-   debugCompile 'com.squareup.leakcanary:leakcanary-android:1.4-SNAPSHOT'
-   releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-SNAPSHOT'
- }
-```
-
-Snapshots are available in Sonatype's `snapshots` repository:
-
-```
-  repositories {
-    mavenCentral()
-    maven {
-      url 'https://oss.sonatype.org/content/repositories/snapshots/'
-    }
-  }
-```
-
-[![Build Status](https://travis-ci.org/square/leakcanary.svg?branch=master)](https://travis-ci.org/square/leakcanary)
-
-# Change Log
-
-All changes in 1.4+ are [tracked here](https://github.com/square/leakcanary/pulls?utf8=%E2%9C%93&q=milestone%3A1.4+is%3Apr).
+* Fix false negative where GC root is of type android.os.Binder [#482](https://github.com/square/leakcanary/issues/482)
+* Update HAHA to 2.0.3; clear compiler warnings [#563](https://github.com/square/leakcanary/issues/563) 
+* Correct some mistakes in German translation [#516](https://github.com/square/leakcanary/pull/516)
+* Don't loop when storage permission denied [#422](https://github.com/square/leakcanary/issues/422)
+* Remove old references to "__" prefixed resources [#477](https://github.com/square/leakcanary/pull/477)
+* Fix permission crash for DisplayLeakActivity on M [#382](https://github.com/square/leakcanary/issues/382)
+* Fix NPE when thread name not found in heap dump [#417](https://github.com/square/leakcanary/issues/417)
+* Add version info to stacktrace [#473](https://github.com/square/leakcanary/issues/473)
 
 ## Version 1.4-beta2 *(2016-03-23)*
 
@@ -70,15 +45,6 @@ All changes in 1.4+ are [tracked here](https://github.com/square/leakcanary/pull
 * Each `ExcludedRef` entry can now be ignored entirely or "kept only if no other path".
 * Added support for ignoring all fields (static and non static) for a given class.
 
-### Dependencies
-
-```gradle
- dependencies {
-   debugCompile 'com.squareup.leakcanary:leakcanary-android:1.4-beta1'
-   releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.4-beta1'
- }
-```
-
 ## Version 1.3.1 *(2015-05-16)*
 
 * Heap dumps and analysis results are now saved on the sd card: [#21](https://github.com/square/leakcanary/issues/21).
@@ -106,29 +72,8 @@ All changes in 1.4+ are [tracked here](https://github.com/square/leakcanary/pull
 * `AndroidExcludedRefs.createAppDefaults()` & `AndroidExcludedRefs.createAndroidDefaults()` return a `ExcludedRef.Builder`.
 * `ExcludedRef` moved from `leakcanary-analyzer` to `leakcanary-watcher`
 
-### Dependencies
-
-```gradle
- dependencies {
-   debugCompile 'com.squareup.leakcanary:leakcanary-android:1.3.1'
-   releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.3.1'
- }
-```
-
-### Statistics
-
-* 33 commits to the LeakCanary library code and 11 commits to [HAHA](https://github.com/square/haha).
-* 6 contributors: [Pierre-Yves Ricau](https://github.com/square/leakcanary/commits?author=pyricau), [Sergey Shulepov](https://github.com/square/leakcanary/commits?author=pepyakin), [Romain Guy](https://github.com/square/leakcanary/commits?author=romainguy), [liaohuqiu](https://github.com/square/leakcanary/commits?author=liaohuqiu), [Dario Marcato](https://github.com/square/leakcanary/commits?author=dmarcato), [Anders Aagaard](https://github.com/square/leakcanary/commits?author=andaag).
-
 ## Version 1.3 *(2015-05-08)*
 
 Initial release.
 
 ### Dependencies
-
-```gradle
- dependencies {
-   debugCompile 'com.squareup.leakcanary:leakcanary-android:1.3'
-   releaseCompile 'com.squareup.leakcanary:leakcanary-android-no-op:1.3'
- }
-```
